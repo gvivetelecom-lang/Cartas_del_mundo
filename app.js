@@ -328,12 +328,12 @@ function vInicio() {
       <div class="fecha">${fmtLargo(fechaCarta())}</div>
       <a class="btn" href="#noticia">${L("Acceder a la noticia del día", "Acessar a notícia do dia", "Read the story of the day")}</a>
     </section>
-    <section class="tema-home">
+    ${temaDia() ? `<section class="tema-home">
       <div class="etiqueta-t">${L("Tema del manifiesto o ensayo de hoy", "Tema do manifesto ou ensaio de hoje", "Today's manifesto or essay topic")}</div>
-      <h2>${tr("temaTit")}</h2>
+      <h2>${esc(temaDia().t)}</h2>
       <p>${L("Escribí un texto breve sobre este tema y enviálo desde la sección de abajo.", "Escreva um texto breve sobre este tema e envie pela seção abaixo.", "Write a short text on this topic and send it from the section below.")}</p>
       <a class="btn-claro" href="#compartir">${L("Enviar mi texto", "Enviar meu texto", "Send my text")}</a>
-    </section>
+    </section>` : ""}
   </div>
   <section class="secciones-home">
     <div class="titulo-s">${L("Secciones de la carta", "Seções da carta", "Sections of the letter")}</div>
@@ -542,12 +542,18 @@ function vCarta() {
     h += `</section>`;
   });
   if (!todas) h += `<div class="muro"><h3>${tr("muroTit")}</h3><p>${tr("muroTxt")}</p><a class="btn" href="#suscribirse" data-a="pop">${tr("suscribirme")}</a></div>`;
-  h += `
+  const tema = temaDia();
+  if (tema) {
+    h += `
   <section class="tema">
     <div class="etiqueta">${tr("temaEt")}</div>
-    <h2>${tr("temaTit")}</h2>
+    <h2>${esc(tema.t)}</h2>
+    ${tema.p ? `<p>${esc(tema.p)}</p>` : ""}
+    <ul>${(tema.preguntas || []).map(q => `<li>${esc(q)}</li>`).join("")}</ul>
+    ${(tema.seguir || []).length ? `<p><b>${L("Para seguir mirando", "Para seguir olhando", "Keep an eye on")}</b></p><ul>${tema.seguir.map(s => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}
     <p>${tr("temaTxt")}</p>
   </section>`;
+  }
   if (ACCESO()) {
     h += `<section class="envio"><h3>${tr("envioTit")}</h3>
       <form id="f-envio">
@@ -820,6 +826,8 @@ function ahoraSP() {
   return { fecha: `${g("year")}-${g("month")}-${g("day")}`, hora: parseInt(g("hour"), 10) };
 }
 function fechaCarta() { return vs.fechaCarta || st.hoy; }
+/* Tema del manifiesto de la carta cargada; null si esa carta no trae tema. */
+function temaDia() { return vs.tema && vs.tema.t ? vs.tema : null; }
 /* Si la carta todavía no llegó, el texto de la noticia queda vacío sin romper la página. */
 function C0() { return CARTA[0] || { t: "", p: "", porque: "", fuentes: "", sec: "", pt: {}, en: {} }; }
 function flash(v, t) { vs.flash = { v, t }; }
@@ -829,10 +837,11 @@ function errTxt(err) { return (err && err.message) ? err.message : String(err); 
 async function cargarCarta(fecha) {
   if (!sb) return;
   const { data, error } = await sb.rpc("carta_por_fecha", { p_fecha: fecha || null });
-  if (error || !data) { CARTA = []; st.cartaCompleta = false; vs.fechaCarta = null; return; }
+  if (error || !data) { CARTA = []; st.cartaCompleta = false; vs.fechaCarta = null; vs.tema = null; return; }
   CARTA = Array.isArray(data.items) ? data.items : [];
   st.cartaCompleta = !!data.completa;
   vs.fechaCarta = data.fecha || null;
+  vs.tema = data.tema || null;
 }
 async function cargarArchivo() {
   if (!sb) return;

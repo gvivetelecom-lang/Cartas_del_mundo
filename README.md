@@ -22,6 +22,7 @@ Proyecto: `jvflixitaneicqraxhoq`. Para crear una base nueva desde cero, ejecutá
 
 1. `supabase/migrations/001_base.sql`: tablas base, `es_admin()` y reglas RLS.
 2. `supabase/migrations/002_web.sql`: cortesías, mensajes de contacto, funciones de suscripción, carta y archivo, y permisos.
+3. `supabase/migrations/003_tema.sql`: columna `tema` de la carta y función `carta_por_fecha` que la devuelve.
 
 Ambos scripts son idempotentes: se pueden volver a correr sin romper nada.
 
@@ -53,6 +54,19 @@ La carta de cada día es una fila en la tabla `cartas`: `fecha` (date, pk) e `it
 ```
 
 Secciones válidas en `sec`: `paraguay`, `internacional`, `economia`, `ciencia`, `historia`, `america`. Los campos `pt` y `en` son opcionales; si faltan, se muestra el español.
+
+El tema del manifiesto de cada día va en la columna `tema` (jsonb, opcional, agregada por `003_tema.sql`):
+
+```json
+{
+  "t": "Título del tema",
+  "p": "Párrafo opcional.",
+  "preguntas": ["Pregunta 1?", "Pregunta 2?", "Pregunta 3?"],
+  "seguir": ["Tema para seguir mirando 1.", "Tema para seguir mirando 2."]
+}
+```
+
+Si la carta no trae `tema`, el bloque no aparece en el sitio.
 
 Las cartas de los últimos 7 días son visibles para todas las personas. Las anteriores solo muestran el primer tema completo, salvo para las suscriptoras activas y las cortesías.
 
