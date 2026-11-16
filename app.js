@@ -139,14 +139,29 @@ function bloqueCuenta() {
   if (s.cortesia) return `<p>${L("Tu cuenta es de cortesía del grupo. Acceso completo.", "Sua conta é cortesia do grupo. Acesso completo.", "Your account is a courtesy from the group. Full access.")}</p>`;
   if (s.estado === "pendiente") return `<p>${L("Recibimos tu pedido de suscripción. La confirmación llega por correo.", "Recebemos seu pedido de assinatura. A confirmação chega por e-mail.", "We received your subscription request. Confirmation arrives by email.")}</p>
       <button class="btn sec" data-a="cancelar">${L("Cancelar mi pedido", "Cancelar meu pedido", "Cancel my request")}</button>`;
-  if (s.estado === "activa") return `<p>${L("Tu suscripción está activa. Es gratuita.", "Sua assinatura está ativa. É gratuita.", "Your subscription is active. It is free.")}</p>
+  if (s.estado === "activa") return `<p>${L("Tu suscripción está activa desde", "Sua assinatura está ativa desde", "Your subscription is active since")} ${fmtCuando(s.altaHora)}. ${L("Es gratuita.", "É gratuita.", "It is free.")}</p>
       <button class="btn sec" data-a="cancelar">${L("Darme de baja de la suscripción", "Cancelar minha assinatura", "Unsubscribe")}</button>`;
   return `<p>${L("Diste de baja tu suscripción. Podés volver a pedirla cuando quieras.", "Você cancelou a assinatura. Pode pedir de novo quando quiser.", "You unsubscribed. You can request it again anytime.")}</p>${formSuscribir()}`;
 }
+/* Fecha y hora legibles (hora de Paraguay). */
+function fmtCuando(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("es-PY", { timeZone: "America/Asuncion", dateStyle: "medium", timeStyle: "short" });
+}
 function formSuscribir() {
   return `<div class="plan"><b>${L("Suscribite gratis", "Assine grátis", "Subscribe for free")}</b>
-    ${notaPrecio()}${checksPago()}
-    <button class="btn" data-a="suscribir">${L("Enviar mi pedido por correo", "Enviar meu pedido por e-mail", "Send my request by email")}</button></div>`;
+    ${notaPrecio()}
+    <form id="f-suscribir" class="suscribir-form">
+      <label for="s-nombre">${L("Nombre", "Nome", "First name")}</label>
+      <input type="text" id="s-nombre" autocomplete="given-name" required>
+      <label for="s-apellido">${L("Apellido", "Sobrenome", "Last name")}</label>
+      <input type="text" id="s-apellido" autocomplete="family-name" required>
+      <label for="s-celular">${L("Celular (con +)", "Celular (com +)", "Mobile (with +)")}</label>
+      <input type="tel" id="s-celular" placeholder="+595 981 123456" autocomplete="tel" required>
+      <label for="s-correo">${L("Tu correo", "Seu e-mail", "Your email")}</label>
+      <input type="email" id="s-correo" value="${esc(st.sesion || "")}" readonly>
+      <button class="btn" type="submit">${L("Suscribirme", "Assinar", "Subscribe")}</button>
+    </form></div>`;
 }
 function sesionBarra() {
   if (!st.sesion) return `<div class="sesion-barra"><span>${L("No iniciaste sesión", "Você não entrou", "You are not logged in")}</span><a class="btn chico" href="#suscribirse">${tr("ingresar")}</a></div>`;
@@ -163,7 +178,7 @@ function flashHTML(name) {
 
 /* ---------- Pago, consentimientos y avisos ---------- */
 function notaPrecio() {
-  return `<p class="nota">${L("La suscripción es gratuita: no hay pagos ni cobros. Se pide y se confirma por correo. Podés darte de baja cuando quieras.", "A assinatura é gratuita: não há pagamentos nem cobranças. Ela é pedida e confirmada por e-mail. Pode cancelar quando quiser.", "The subscription is free: there are no payments or charges. It is requested and confirmed by email. You can unsubscribe anytime.")}</p>`;
+  return `<p class="nota">${L("La suscripción es gratuita: no hay pagos ni cobros. Podés darte de baja cuando quieras.", "A assinatura é gratuita: não há pagamentos nem cobranças. Pode cancelar quando quiser.", "The subscription is free: there are no payments or charges. You can unsubscribe anytime.")}</p>`;
 }
 function checksPago() {
   const chk = (a, on, texto) => `<button type="button" class="check" data-a="${a}" aria-pressed="${on}"><span class="caja ${on ? "on" : ""}"></span><span>${texto}</span></button>`;
@@ -649,7 +664,7 @@ function vSuscribirse() {
   <div class="titulo-pagina">
     <div class="etiqueta">${tr("suscribirme")}</div>
     <h1>${L("Suscribite a Cartas del Mundo", "Assine o Cartas do Mundo", "Subscribe to Cartas del Mundo")}</h1>
-    <p>${L("La suscripción es gratuita. Se pide por correo y se confirma. Después tenés la carta completa, el archivo de noticias pasadas y el envío de tus textos.", "A assinatura é gratuita. Ela é pedida por e-mail e confirmada. Depois você tem a carta completa, o arquivo de notícias passadas e o envio dos seus textos.", "The subscription is free. It is requested by email and confirmed. Then you get the full letter, the archive of past stories and sending your texts.")}</p>
+    <p>${L("La suscripción es gratuita. Completás tus datos y entrás al instante a la carta completa, el archivo de noticias pasadas y el envío de tus textos.", "A assinatura é gratuita. Você preenche seus dados e entra na hora na carta completa, no arquivo de notícias passadas e no envio dos seus textos.", "The subscription is free. You fill in your details and get instant access to the full letter, the archive of past stories and sending your texts.")}</p>
   </div>
   ${flashHTML("suscribirse")}
   <div class="grid2" style="margin-top:30px">
@@ -668,7 +683,7 @@ function vSuscribirse() {
   </div>
   <div class="pasos">
     <div><b>1. ${L("Tu correo", "Seu e-mail", "Your email")}</b>${L("Entrás con un enlace, sin contraseña.", "Você entra com um link, sem senha.", "You log in with a link, no password.")}</div>
-    <div><b>2. ${L("Enviar el pedido", "Enviar o pedido", "Send the request")}</b>${L("Por correo, en un clic.", "Por e-mail, com um clique.", "By email, in one click.")}</div>
+    <div><b>2. ${L("Completar tus datos", "Preencher seus dados", "Fill in your details")}</b>${L("Nombre, apellido y celular. Acceso al instante.", "Nome, sobrenome e celular. Acesso imediato.", "Name, last name and mobile. Instant access.")}</div>
     <div><b>3. ${L("Leés todo", "Lê tudo", "Read everything")}</b>${L("Carta completa, archivo y envío de textos.", "Carta completa, arquivo e envio de textos.", "Full letter, archive and sending texts.")}</div>
   </div>`;
 }
@@ -735,10 +750,11 @@ function vGestion() {
     const correos = Object.keys(st.subs);
     let tabla = `<p class="vacio">${L("Todavía no hay suscriptoras.", "Ainda não há assinantes.", "There are no subscribers yet.")}</p>`;
     if (correos.length) {
-      tabla = `<div class="tabla-wrap"><table><thead><tr><th>${L("Correo", "E-mail", "Email")}</th><th>${L("Estado", "Status", "Status")}</th><th>${L("Fecha", "Data", "Date")}</th><th>${L("Acciones", "Ações", "Actions")}</th></tr></thead><tbody>`;
+      tabla = `<div class="tabla-wrap"><table><thead><tr><th>${L("Correo", "E-mail", "Email")}</th><th>${L("Nombre", "Nome", "Name")}</th><th>${L("Celular", "Celular", "Mobile")}</th><th>${L("Estado", "Status", "Status")}</th><th>${L("Alta", "Adesão", "Joined")}</th><th>${L("Baja", "Cancelamento", "Unsubscribed")}</th><th>${L("Acciones", "Ações", "Actions")}</th></tr></thead><tbody>`;
       for (const e of correos) {
         const s = st.subs[e];
-        const fecha = s.cortesia ? L("Cortesía", "Cortesia", "Courtesy") : s.alta ? L("Pedido el", "Pedido em", "Requested on") + " " + fmt(s.alta) : "—";
+        const alta = s.cortesia ? L("Cortesía", "Cortesia", "Courtesy") : fmtCuando(s.altaHora);
+        const baja = s.baja ? fmtCuando(s.baja) : "—";
         let acc = "";
         if (s.cortesia) acc += `<button class="btn sec chico" data-a="quitar-cortesia" data-m="${esc(e)}">${L("Quitar cortesía", "Remover cortesia", "Remove courtesy")}</button>`;
         else {
@@ -746,7 +762,7 @@ function vGestion() {
           if (s.estado === "activa" || s.estado === "pendiente") acc += `<button class="btn peligro chico" data-a="cancelar-admin" data-m="${esc(e)}">${L("Dar de baja", "Dar baixa", "Unsubscribe")}</button>`;
         }
         acc += confirmBtn("suscriptora", e);
-        tabla += `<tr><td>${esc(e)}</td><td>${badge(s)}</td><td>${fecha}</td><td><div class="acc-tabla">${acc}</div></td></tr>`;
+        tabla += `<tr><td>${esc(e)}</td><td>${esc(s.nombre + (s.apellido ? " " + s.apellido : "")) || "—"}</td><td>${esc(s.celular) || "—"}</td><td>${badge(s)}</td><td>${alta}</td><td>${baja}</td><td><div class="acc-tabla">${acc}</div></td></tr>`;
       }
       tabla += `</tbody></table></div>`;
     }
@@ -855,18 +871,18 @@ async function cargarArchivo() {
   }));
 }
 function aSub(r, cortesia) {
-  return { id: r.user_id, estado: r.estado, cortesia: !!cortesia, alta: (r.alta || "").slice(0, 10), edad: r.edad_adulta ? "adulto" : "menor", tutor: r.tutor_correo || null, aceptoTerminos: r.acepto_terminos };
+  return { id: r.user_id, estado: r.estado, cortesia: !!cortesia, alta: (r.alta || "").slice(0, 10), altaHora: r.alta || null, baja: r.baja_at || null, nombre: r.nombre || "", apellido: r.apellido || "", celular: r.celular || "", edad: r.edad_adulta ? "adulto" : "menor", tutor: r.tutor_correo || null, aceptoTerminos: r.acepto_terminos };
 }
 async function cargarFila() {
   st.fila = null; st.subs = {};
   if (!sb || !st.sesion) return;
-  const { data } = await sb.from("suscriptoras").select("user_id, correo, estado, edad_adulta, tutor_correo, acepto_terminos, alta").eq("correo", st.sesion).limit(1);
+  const { data } = await sb.from("suscriptoras").select("user_id, correo, estado, edad_adulta, tutor_correo, acepto_terminos, alta, nombre, apellido, celular, baja_at").eq("correo", st.sesion).limit(1);
   if (data && data[0]) { st.fila = data[0]; st.subs[st.sesion] = aSub(data[0], false); }
 }
 async function cargarAdmin() {
   if (!sb) return;
   const [s, c, m, e, d] = await Promise.all([
-    sb.from("suscriptoras").select("user_id, correo, estado, edad_adulta, tutor_correo, acepto_terminos, alta").order("alta", { ascending: false }),
+    sb.from("suscriptoras").select("user_id, correo, estado, edad_adulta, tutor_correo, acepto_terminos, alta, nombre, apellido, celular, baja_at").order("alta", { ascending: false }),
     sb.from("cortesias").select("correo"),
     sb.from("mensajes_contacto").select("id, nombre, correo, motivo, mensaje, leido, creado").order("creado", { ascending: false }).limit(300),
     sb.from("envios").select("id, nombre, correo, tipo, titulo, texto, leido, creado").order("creado", { ascending: false }).limit(300),
@@ -896,32 +912,31 @@ async function aplicarSesion(session) {
 async function suscribir() {
   const rt = ruta();
   const error = t => { flash(rt, t); render(); };
-  if (!st.sesion) return error(L("Entrá con tu correo para pedir la suscripción.", "Entre com seu e-mail para pedir a assinatura.", "Log in with your email to request the subscription."));
-  if (!vs.adulto && !vs.menor) return error(L("Confirmá tu edad para continuar.", "Confirme sua idade para continuar.", "Please confirm your age to continue."));
-  const tutor = vs.menor ? campo("p-tutor") : null;
-  if (vs.menor && (!tutor || !vs.tutorOk)) return error(L("Indicá el correo de tu tutor y que tu tutor dio su consentimiento.", "Indique o e-mail do seu responsável e que ele deu o consentimento.", "Enter your guardian's email and confirm their consent."));
-  if (!vs.acepta) return error(L("Aceptá los términos y la política de privacidad para continuar.", "Aceite os termos e a política de privacidade para continuar.", "Accept the terms and privacy policy to continue."));
-  const { data, error: err } = await sb.rpc("solicitar_suscripcion", {
-    p_edad_adulta: !vs.menor,
-    p_tutor_correo: tutor,
-    p_tutor_consentimiento: vs.menor ? !!vs.tutorOk : false,
-    p_acepto: true
-  });
+  if (!st.sesion) return error(L("Entrá con tu correo para suscribirte.", "Entre com seu e-mail para se assinar.", "Log in with your email to subscribe."));
+  const nombre = campo("s-nombre"), apellido = campo("s-apellido"), celular = campo("s-celular");
+  if (!nombre || !apellido) return error(L("Completá tu nombre y apellido.", "Preencha seu nome e sobrenome.", "Please enter your first and last name."));
+  if (!/^\+[0-9\s\-.()]{8,22}$/.test(celular)) return error(L("El celular tiene que empezar con + y el código de país, por ejemplo +595 981 123456.", "O celular precisa começar com + e o código do país, por exemplo +595 981 123456.", "The mobile number must start with + and the country code, for example +595 981 123456."));
+  const { error: err } = await sb.rpc("solicitar_suscripcion", { p_nombre: nombre, p_apellido: apellido, p_celular: celular });
   if (err) return error(errTxt(err));
-  const correo = st.sesion;
   await cargarFila();
-  vs.adulto = false; vs.menor = false; vs.tutorOk = false; vs.acepta = false; draftVals = {};
+  draftVals = {};
   vs.pop = false;
-  flash("cuenta", data === "activa"
-    ? L("Tu suscripción ya está activa. Ya podés leer la carta completa.", "Sua assinatura já está ativa. Já pode ler a carta completa.", "Your subscription is already active. You can read the full letter now.")
-    : L("Recibimos tu pedido. La confirmación llega por correo.", "Recebemos seu pedido. A confirmação chega por e-mail.", "We received your request. Confirmation arrives by email."));
+  flash("cuenta", L("Listo: tu suscripción ya está activa y podés leer la carta completa.", "Pronto: sua assinatura já está ativa e você pode ler a carta completa.", "Done: your subscription is active and you can read the full letter now."));
   location.hash = "cuenta";
   render();
-  if (data === "pendiente") {
-    const asunto = "Suscripción gratuita · Cartas del Mundo";
-    const cuerpo = ["Hola, quiero suscribirme gratis a Cartas del Mundo.", "", "Correo de mi cuenta: " + correo, tutor ? "Soy menor de 18 años. Correo de mi tutor: " + tutor : "Tengo 18 años o más.", "", "Gracias."].join("\n");
-    window.location.href = "mailto:ancorvalan.a@gmail.com?subject=" + encodeURIComponent(asunto) + "&body=" + encodeURIComponent(cuerpo);
-  }
+}
+/* Cierra la sesión solo en este navegador: no depende de que el servidor responda. */
+async function cerrarSesion() {
+  const rt = ruta();
+  try {
+    if (sb) {
+      const { error } = await sb.auth.signOut({ scope: "local" });
+      if (error) flash(rt, errTxt(error));
+    }
+  } catch (err) { flash(rt, errTxt(err)); }
+  await aplicarSesion(null);
+  vs.loginIniciado = false;
+  render();
 }
 async function cancelarMia() {
   const rt = ruta();
@@ -992,8 +1007,7 @@ document.addEventListener("click", async e => {
   }
   if (a === "suscribir") { await suscribir(); return; }
   if (a === "cancelar") { await cancelarMia(); render(); return; }
-  if (a === "salir") { await sb.auth.signOut(); return; }
-  if (a === "gestion-salir") { await sb.auth.signOut(); return; }
+  if (a === "salir" || a === "gestion-salir") { await cerrarSesion(); return; }
   if (a === "gtab") { vs.gtab = m; render(); return; }
   if (a === "confirmar") { const err = await cambiarEstado(m, "activa"); if (err) flash("gestion", err); await cargarAdmin(); render(); return; }
   if (a === "cancelar-admin") { const err = await cambiarEstado(m, "cancelada"); if (err) flash("gestion", err); await cargarAdmin(); render(); return; }
@@ -1019,6 +1033,7 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   draftVals = {};
   const id = e.target.id;
+  if (id === "f-suscribir") { await suscribir(); return; }
   if (id === "f-login" || id === "f-login-pop") {
     const v = e.target.querySelector("input[type=email]").value.trim();
     if (!v || !sb) return;

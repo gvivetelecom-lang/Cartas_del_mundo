@@ -102,4 +102,6 @@ Abrir `http://localhost:8000/`. Para el acceso por correo hace falta que `localh
 
 - Las funciones que cambian datos (`solicitar_suscripcion`, `cancelar_mi_suscripcion`) solo las puede ejecutar una usuaria con sesión.
 - `carta_por_fecha` y `archivo_cartas` son públicas a propósito: filtran el contenido dentro de la base. El aviso de “SECURITY DEFINER callable by anon” que muestran los advisors de Supabase para estas dos funciones es esperado.
-- Los pedidos de suscripción se confirman a mano desde la pestaña Gestión. Ninguna suscripción pasa a “activa” sin esa confirmación, salvo las cortesías que agrega la administradora.
+- La suscripción es inmediata: la persona entra con su correo, completa nombre, apellido y celular (con +), y queda activa en ese momento. Se guarda en la tabla `suscriptoras` con fecha y hora de alta; al darse de baja queda la fecha en `baja_at`. La pestaña Gestión muestra cada suscriptora con estos datos.
+- Las cortesías que agrega la administradora quedan activas al instante.
+- Los menores de 18 años no se distinguen en el formulario: la verificación de edad y el consentimiento del tutor quedaron fuera de esta versión.
