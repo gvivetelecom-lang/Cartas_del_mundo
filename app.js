@@ -117,12 +117,13 @@ function popHTML() {
     else if (s && s.estado === "activa") cuerpo = `<p>${L("Ya tenés la suscripción activa. Entrá a tu cuenta para leer la carta completa.", "Você já tem a assinatura ativa. Entre na sua conta para ler a carta completa.", "Your subscription is already active. Go to your account to read the full letter.")}</p><a class="btn" href="#cuenta" data-a="pop-cerrar">${L("Entrar a mi cuenta", "Entrar na minha conta", "Go to my account")}</a>`;
     else cuerpo = `<p class="nota">${L("Entraste como", "Entrou como", "Signed in as")} <b>${esc(st.sesion)}</b>.</p>${formSuscribir()}`;
   } else if (st.pendiente) {
-    cuerpo = `<p>${L("Mandamos un enlace de acceso a", "Enviamos um link de acesso para", "We sent an access link to")} <b>${esc(st.pendiente)}</b>.</p><p class="nota">${L("Abrí el enlace desde este mismo navegador. Vence a los pocos minutos.", "Abra o link neste mesmo navegador. Ele expira em poucos minutos.", "Open the link from this same browser. It expires after a few minutes.")}</p>`;
+    cuerpo = `<p>${L("Mandamos un enlace de acceso a", "Enviamos um link de acesso para", "We sent an access link to")} <b>${esc(st.pendiente)}</b>.</p><p class="nota">${L("Escribí aquí el código de 6 números que llegó al correo, o abrí el enlace desde este mismo navegador.", "Escreva aqui o código de 6 números que chegou ao e-mail, ou abra o link neste mesmo navegador.", "Type the 6-digit code from the email here, or open the link from this same browser.")}</p>${formCodigo()}`;
   } else {
     cuerpo = `<p>${intro}</p>
       <form id="f-login-pop">
         <label for="pop-mail">${L("Tu correo", "Seu e-mail", "Your email")}</label>
         <input type="email" id="pop-mail" placeholder="tu@correo.com" required>
+        ${camposAlta()}
         <button class="btn" type="submit">${L("Log in", "Log in", "Log in")}</button>
       </form>`;
   }
@@ -147,6 +148,46 @@ function bloqueCuenta() {
 function fmtCuando(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-PY", { timeZone: "America/Asuncion", dateStyle: "medium", timeStyle: "short" });
+}
+/* Alta junto con el acceso: nombre, apellido y celular se piden al entrar. Si la persona es nueva, queda suscripta al volver del correo. */
+const CLAVE_ALTA = "cdm_alta_pendiente";
+function camposAlta() {
+  const toggle = `<button type="button" class="link" data-a="toggle-cuenta">${vs.yaCuenta ? L("Soy nueva: crear cuenta", "Sou nova: criar conta", "I'm new: create an account") : L("Ya tengo una cuenta", "Já tenho uma conta", "I already have an account")}</button>`;
+  if (vs.yaCuenta) return `<p>${toggle}</p>`;
+  const celMsg = L("El celular tiene que empezar con + y el código de país, por ejemplo +595 981 123456.", "O celular precisa começar com + e o código do país, por exemplo +595 981 123456.", "The mobile number must start with + and the country code, for example +595 981 123456.");
+  return `<label>${L("Nombre", "Nome", "First name")}<input type="text" name="nombre" autocomplete="given-name" required></label>
+    <label>${L("Apellido", "Sobrenome", "Last name")}<input type="text" name="apellido" autocomplete="family-name" required></label>
+    <label>${L("Celular (con +)", "Celular (com +)", "Mobile (with +)")}<input type="tel" name="celular" placeholder="+595 981 123456" autocomplete="tel" required pattern="\\+[0-9\\s\\-.()]{8,22}" title="${esc(celMsg)}"></label>
+    <p>${toggle}</p>
+    <p class="nota">${L("Nombre, apellido y celular son obligatorios para tu suscripción gratuita.", "Nome, sobrenome e celular são obrigatórios para sua assinatura gratuita.", "First name, last name and mobile number are required for your free subscription.")}</p>`;
+}
+function guardarAltaPendiente(f) {
+  try {
+    const nombre = (f.nombre || "").trim(), apellido = (f.apellido || "").trim(), celular = (f.celular || "").trim();
+    if (nombre && apellido && /^\+[0-9\s\-.()]{8,22}$/.test(celular)) localStorage.setItem(CLAVE_ALTA, JSON.stringify({ nombre, apellido, celular }));
+    else localStorage.removeItem(CLAVE_ALTA);
+  } catch (err) { /* sin almacenamiento: entra igual y los datos se piden después */ }
+}
+async function altaPendiente() {
+  let datos = null;
+  try { datos = JSON.parse(localStorage.getItem(CLAVE_ALTA) || "null"); localStorage.removeItem(CLAVE_ALTA); } catch (err) { datos = null; }
+  if (!datos || !sb) return;
+  const { error } = await sb.rpc("solicitar_suscripcion", { p_nombre: datos.nombre, p_apellido: datos.apellido, p_celular: datos.celular });
+  if (!error) {
+    await cargarFila();
+    flash("cuenta", L("Listo: tu suscripción ya está activa y podés leer la carta completa.", "Pronto: sua assinatura já está ativa e você pode ler a carta completa.", "Done: your subscription is active and you can read the full letter now."));
+  }
+}
+
+/* Código de 6 números que llega por correo: se escribe en la misma página, sin salir a otra pestaña. */
+function formCodigo() {
+  const err = vs.codigoErr ? `<p class="nota" role="alert">${esc(vs.codigoErr)}</p>` : "";
+  return `<form id="f-codigo" class="suscribir-form">
+    <label for="in-codigo">${L("Código de 6 números", "Código de 6 números", "6-digit code")}</label>
+    <input type="text" id="in-codigo" inputmode="numeric" autocomplete="one-time-code" required>
+    ${err}
+    <button class="btn" type="submit">${L("Entrar con el código", "Entrar com o código", "Log in with the code")}</button>
+  </form>`;
 }
 function formSuscribir() {
   return `<div class="plan"><b>${L("Suscribite gratis", "Assine grátis", "Subscribe for free")}</b>
@@ -657,7 +698,8 @@ function vSuscribirse() {
     <div class="card">
       <h2>${L("Enlace enviado", "Link enviado", "Link sent")}</h2>
       <p>${L("Mandamos un enlace de acceso a", "Enviamos um link de acesso para", "We sent an access link to")} <b>${esc(st.pendiente)}</b>.</p>
-      <p class="nota">${L("Abrí el enlace desde este mismo navegador. Vence a los pocos minutos.", "Abra o link neste mesmo navegador. Ele expira em poucos minutos.", "Open the link from this same browser. It expires after a few minutes.")}</p>
+      <p class="nota">${L("Escribí aquí el código de 6 números que llegó al correo, o abrí el enlace desde este mismo navegador.", "Escreva aqui o código de 6 números que chegou ao e-mail, ou abra o link neste mesmo navegador.", "Type the 6-digit code from the email here, or open the link from this same browser.")}</p>
+      ${formCodigo()}
     </div>`;
   }
   return `
@@ -673,6 +715,7 @@ function vSuscribirse() {
       <p class="nota">${L("Te enviamos un enlace al correo. No hace falta contraseña.", "Enviamos um link para o seu e-mail. Não é preciso senha.", "We send you a link by email. No password needed.")}</p>
       <label for="in-mail">${L("Tu correo", "Seu e-mail", "Your email")}</label>
       <input type="email" id="in-mail" placeholder="tu@correo.com" required>
+      ${camposAlta()}
       <button class="btn" type="submit">${L("Enviar enlace de acceso", "Enviar link de acesso", "Send access link")}</button>
     </form>
     <div class="card" style="margin:0">
@@ -847,7 +890,12 @@ function temaDia() { return vs.tema && vs.tema.t ? vs.tema : null; }
 /* Si la carta todavía no llegó, el texto de la noticia queda vacío sin romper la página. */
 function C0() { return CARTA[0] || { t: "", p: "", porque: "", fuentes: "", sec: "", pt: {}, en: {} }; }
 function flash(v, t) { vs.flash = { v, t }; }
-function errTxt(err) { return (err && err.message) ? err.message : String(err); }
+function errTxt(err) {
+  const m = (err && err.message) ? String(err.message) : String(err);
+  const limite = (err && err.code === "over_email_send_rate_limit") || (err && err.status === 429) || /rate limit/i.test(m);
+  if (limite) return L("Se enviaron demasiados enlaces seguidos. Esperá una hora y pedí un solo enlace de nuevo.", "Foram enviados links demais seguidos. Espere uma hora e peça um só link de novo.", "Too many links were sent in a row. Wait an hour and request a single link again.");
+  return m;
+}
 
 /* ---------- Datos ---------- */
 async function cargarCarta(fecha) {
@@ -904,7 +952,8 @@ async function aplicarSesion(session) {
   if (st.sesion && sb) {
     const { data: adm } = await sb.rpc("es_admin");
     st.admin = adm === true;
-    if (st.admin) await cargarAdmin(); else await cargarFila();
+    if (st.admin) { await cargarAdmin(); try { localStorage.removeItem(CLAVE_ALTA); } catch (err) { /* nada */ } }
+    else { await cargarFila(); if (!st.fila) await altaPendiente(); }
   }
 }
 
@@ -984,6 +1033,7 @@ document.addEventListener("click", async e => {
   if (a === "pop-cerrar") { vs.pop = false; vs.refocus = null; render(); return; }
   if (a === "vista") return;
   if (a === "motivo") { vs.motivo = m; render(); return; }
+  if (a === "toggle-cuenta") { vs.yaCuenta = !vs.yaCuenta; render(); return; }
   if (a === "tipo") { vs.tipo = m; render(); return; }
   if (a === "idioma") { setIdioma(m); return; }
   if (a === "skip") { const h = document.querySelector("#main h1"); if (h) { h.setAttribute("tabindex", "-1"); h.focus(); } return; }
@@ -1034,10 +1084,25 @@ document.addEventListener("submit", async e => {
   draftVals = {};
   const id = e.target.id;
   if (id === "f-suscribir") { await suscribir(); return; }
+  if (id === "f-codigo") {
+    const token = e.target.querySelector("input").value.replace(/\s/g, "");
+    if (!token || !sb || !st.pendiente) return;
+    vs.codigoErr = null;
+    vs.loginIniciado = true;
+    const { error } = await sb.auth.verifyOtp({ email: st.pendiente, token, type: "email" });
+    if (error) {
+      vs.loginIniciado = false;
+      vs.codigoErr = /invalid|expired/i.test(error.message || "")
+        ? L("El código no es válido o ya venció. Pedí uno nuevo.", "O código não é válido ou já venceu. Peça um novo.", "The code is invalid or has expired. Request a new one.")
+        : errTxt(error);
+    }
+    render(); return;
+  }
   if (id === "f-login" || id === "f-login-pop") {
     const v = e.target.querySelector("input[type=email]").value.trim();
     if (!v || !sb) return;
     vs.loginIniciado = true;
+    guardarAltaPendiente({ nombre: e.target.querySelector("[name=nombre]")?.value, apellido: e.target.querySelector("[name=apellido]")?.value, celular: e.target.querySelector("[name=celular]")?.value });
     const { error } = await sb.auth.signInWithOtp({ email: v, options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) flash(ruta(), errTxt(error)); else st.pendiente = v;
     render(); return;
@@ -1097,7 +1162,11 @@ async function iniciar() {
   sb.auth.onAuthStateChange(async (evt, session) => {
     if (evt === "SIGNED_IN" || evt === "SIGNED_OUT" || evt === "USER_UPDATED") {
       await aplicarSesion(session);
-      if (evt === "SIGNED_IN" && vs.loginIniciado) { vs.loginIniciado = false; st.pendiente = null; location.hash = "cuenta"; }
+      if (evt === "SIGNED_IN" && vs.loginIniciado) {
+        vs.loginIniciado = false; st.pendiente = null;
+        if (st.sesion && !st.admin && !st.fila) flash("cuenta", L("Todavía no tenés suscripción. Completá tus datos abajo para suscribirte gratis.", "Você ainda não tem assinatura. Preencha seus dados abaixo para assinar grátis.", "You don't have a subscription yet. Fill in your details below to subscribe for free."));
+        location.hash = "cuenta";
+      }
       render();
     }
   });
