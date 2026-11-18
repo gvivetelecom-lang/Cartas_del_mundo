@@ -593,7 +593,7 @@ function vCarta() {
     h += `<section class="seccion"><h2>${secT(sec)}</h2>`;
     CARTA.filter(n => n.sec === sec).forEach(n => {
       const bloq = !todas && n !== C0();
-      h += `<article class="noticia ${bloq ? "bloq" : ""}"><h3>${esc(nw(n, "t"))}</h3>${bloq ? "" : `${nw(n, "p") ? `<p>${esc(nw(n, "p"))}</p>` : ""}<div class="porque"><b>${tr("porQue")}</b>${esc(nw(n, "porque"))}</div><div class="fuentes">${tr("fuentes")}: ${esc(n.fuentes)}</div>`}</article>`;
+      h += `<article class="noticia ${bloq ? "bloq" : ""}" ${bloq ? "" : `data-lectura="${esc(nw(n, "t"))}" data-sec="${esc(sec)}"`}><h3>${esc(nw(n, "t"))}</h3>${bloq ? "" : `${nw(n, "p") ? `<p>${esc(nw(n, "p"))}</p>` : ""}<div class="porque"><b>${tr("porQue")}</b>${esc(nw(n, "porque"))}</div><div class="fuentes">${tr("fuentes")}: ${esc(n.fuentes)}</div>`}</article>`;
     });
     h += `</section>`;
   });
@@ -843,6 +843,30 @@ const RUTAS = {
 
 /* ---------- Render ---------- */
 function ruta() { const h = (location.hash || "#inicio").slice(1); return RUTAS[h] ? h : "inicio"; }
+/* Estadísticas anónimas: una visita por carga de página y cada noticia vista en pantalla (una vez por carga). Sin IP ni datos personales. */
+const noticiasContadas = new Set();
+function noContar() {
+  try { return localStorage.getItem("cdm_no_contar") === "1"; } catch (err) { return false; }
+}
+function registrarEvento(tipo, seccion, titular) {
+  if (st.admin || noContar()) return;
+  try { if (sb)sb.from("eventos").insert({ tipo, seccion: seccion || null, titular: titular || null }).then(() => {}, () => {}); } catch (err) { /* sin registro: el sitio sigue igual */ }
+}
+function observarLecturas() {
+  if (!("IntersectionObserver" in window)) return;
+  const obs = new IntersectionObserver(entradas => {
+    entradas.forEach(en => {
+      if (!en.isIntersecting) return;
+      const t = en.target.dataset.lectura;
+      obs.unobserve(en.target);
+      if (noticiasContadas.has(t)) return;
+      noticiasContadas.add(t);
+      registrarEvento("lectura", en.target.dataset.sec, t);
+    });
+  }, { threshold: 0.5 });
+  document.querySelectorAll("article[data-lectura]").forEach(el => obs.observe(el));
+}
+
 function render() {
   const name = ruta();
   if (vs.flash && vs.flash.v !== name) vs.flash = null;
@@ -852,6 +876,7 @@ function render() {
   if (vs.pop) { const pi = main.querySelector(".pop-caja input, .pop-caja button"); if (pi) pi.focus({ preventScroll: true }); }
   main.classList.toggle("con-banner", !vs.cookies);
   restaurarBorradores();
+  observarLecturas();
   if (vs.refocus) {
     const el = [...main.querySelectorAll("[data-a]")].find(b => b.dataset.a + (b.dataset.m ? "|" + b.dataset.m : "") === vs.refocus);
     if (el) el.focus({ preventScroll: true });
@@ -1173,7 +1198,13 @@ async function iniciar() {
   await cargarCarta(null);
   await cargarArchivo();
   st.listo = true;
+  registrarEvento("visita");
   render();
 }
+/* Para no contar las visitas propias en un celular o navegador sin sesión: abrir la página con ?no-contar (y ?contar para volver a contar). */
+try {
+  if (new URLSearchParams(location.search).has("no-contar")) localStorage.setItem("cdm_no_contar", "1");
+  if (new URLSearchParams(location.search).has("contar")) localStorage.removeItem("cdm_no_contar");
+} catch (err) { /* sin almacenamiento: se cuenta igual */ }
 render();
 iniciar();
